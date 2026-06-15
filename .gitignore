@@ -1,0 +1,80 @@
+# ─── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg
+*.egg-info/
+build/
+.eggs/
+pip-wheel-metadata/
+
+# ─── Virtual environments ─────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ─── Environment variables / secrets ─────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── RAG — auto-generated data ───────────────────────────────
+vectorstore/
+backend/vectorstore/
+
+# ─── Documents (may contain sensitive PDFs) ──────────────────
+documents/*.pdf
+documents/*.txt
+backend/documents/
+
+# ─── ChromaDB ────────────────────────────────────────────────
+*.bin
+chroma.sqlite3
+
+# ─── Node / Frontend ─────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Vite / Build outputs ────────────────────────────────────
+dist/
+dist-ssr/
+*.local
+
+# ─── Jupyter ─────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ─── IDE / Editor ────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.classpath
+
+# ─── OS ──────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ─── Logs ────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Testing ─────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/

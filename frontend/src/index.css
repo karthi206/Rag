@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Resets ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #04070f;
+  color: #e2e8f0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar styling ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+
+/* ─── Glassmorphism base card ─────────────────────────────── */
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border border-white/[0.06] backdrop-blur-sm;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .glass-input {
+    @apply rounded-xl border border-white/[0.08] backdrop-blur-sm bg-white/[0.04] text-slate-100
+           placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
+           focus:ring-2 focus:ring-violet-500/20 transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply rounded-xl px-4 py-2 text-sm font-semibold text-white
+           bg-violet-600 hover:bg-violet-500 active:bg-violet-700
+           transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-violet-500/50;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    @apply rounded-xl px-4 py-2 text-sm font-medium text-slate-400
+           hover:text-slate-100 hover:bg-white/[0.06]
+           transition-all duration-200 focus:outline-none;
+  }
+
+  /* Status badges */
+  .badge-online {
+    @apply flex items-center gap-1.5 text-xs font-medium text-emerald-400;
+  }
+  .badge-offline {
+    @apply flex items-center gap-1.5 text-xs font-medium text-rose-400;
+  }
+  .badge-loading {
+    @apply flex items-center gap-1.5 text-xs font-medium text-amber-400;
+  }
+
+  /* Source chip */
+  .source-chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-violet-500/10 text-violet-300 border border-violet-500/20
+           hover:bg-violet-500/20 transition-all duration-150;
+  }
+
+  /* Dot pulse for loading */
+  .dot-pulse {
+    @apply w-2 h-2 rounded-full bg-violet-500 animate-pulse;
+  }
+}
+
+/* ─── Streaming text cursor ───────────────────────────────── */
+.streaming-cursor::after {
+  content: '▌';
+  display: inline-block;
+  color: #8b5cf6;
+  animation: blink 1s step-end infinite;
+  margin-left: 1px;
+}
+
+/* ─── Gradient text ───────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Glow effects ────────────────────────────────────────── */
+.violet-glow {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.15), 0 0 60px rgba(139, 92, 246, 0.05);
+}
+
+/* ─── Message bubble prose ───────────────────────────────── */
+.prose-rag {
+  @apply text-sm leading-relaxed text-slate-200;
+}
+.prose-rag code {
+  @apply font-mono text-xs bg-white/[0.08] text-violet-300 px-1.5 py-0.5 rounded;
+}
+.prose-rag pre {
+  @apply font-mono text-xs bg-navy-900 border border-white/[0.06] rounded-xl p-4 overflow-x-auto;
+}
+.prose-rag strong {
+  @apply font-semibold text-slate-100;
+}
+
+/* ─── Drop zone ───────────────────────────────────────────── */
+.drop-zone {
+  @apply rounded-xl border-2 border-dashed border-white/[0.12] p-6
+         transition-all duration-200 cursor-pointer;
+}
+.drop-zone:hover,
+.drop-zone.dragging {
+  @apply border-violet-500/60 bg-violet-500/[0.05];
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+/* ─── Animated gradient background ───────────────────────── */
+.bg-animated-gradient {
+  background: linear-gradient(
+    -45deg,
+    #04070f,
+    #080d1a,
+    #0a0d1f,
+    #08101e
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ─── Shimmer skeleton ────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
