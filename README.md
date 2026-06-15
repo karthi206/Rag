@@ -1,6 +1,6 @@
 # RAG Document Assistant
 
-> A full-stack, locally-running **Retrieval-Augmented Generation (RAG)** system — ask questions about your own PDF documents using hybrid search, cross-encoder reranking, and a local LLM via Ollama.
+> A full-stack, locally-running **Retrieval-Augmented Generation (RAG)** system — ask questions about your own PDF documents using hybrid search, cross-encoder reranking, and a local LLM via Ollama. Runs 100% offline with no external API keys required.
 
 ---
 
@@ -10,7 +10,7 @@
 ┌─────────────────────────────┐        REST / Streaming HTTP
 │  React Frontend  (port 5173) │ ◄──────────────────────────────► ┌──────────────────────────────┐
 │  Vite · TailwindCSS          │                                   │  FastAPI Backend  (port 8000) │
-│  index.html (standalone)     │                                   │  uvicorn · python-multipart   │
+│  React 18 + lucide-react     │                                   │  uvicorn · python-multipart   │
 └─────────────────────────────┘                                   └──────────────┬───────────────┘
                                                                                  │
                                                           ┌──────────────────────▼───────────────────────┐
@@ -26,15 +26,18 @@
 
 ## Features
 
-- **Hybrid Search** — Combines dense vector similarity (Chroma + `all-MiniLM-L6-v2`) with sparse keyword matching (BM25) for maximum recall.
+- **Hybrid Search** — Combines dense vector similarity (Chroma + `all-MiniLM-L6-v2`) with sparse keyword matching (BM25Okapi) for maximum recall.
 - **Cross-Encoder Reranking** — Retrieved candidates are rescored by `ms-marco-MiniLM-L-6-v2` for precision.
-- **Streaming LLM Responses** — Token-by-token streaming via Ollama (`phi3`) with a live blinking cursor.
-- **Source Attribution** — Every answer includes cited document & page references parsed from the stream.
+- **Streaming LLM Responses** — Token-by-token streaming via Ollama (`phi3`) with a live blinking cursor in the UI.
+- **Source Attribution** — Every answer includes cited document & page references parsed from the `|||SOURCES|||` stream trailer.
 - **Conversational Memory** — Rolling multi-turn chat history (last 5 turns) sent with every query for context.
 - **Persistent Vectorstore** — Chroma DB is persisted to disk; previous documents survive server restarts.
+- **Bootstrap on Startup** — Server automatically reloads the Chroma DB and rebuilds the BM25 index from disk on every restart.
 - **Deduplication Guard** — Re-uploading the same filename is silently skipped, preventing duplicate chunks.
-- **Drag-and-Drop Upload** — Browser-native PDF drag-and-drop with real-time progress indicator.
+- **Drag-and-Drop Upload** — Browser-native PDF drag-and-drop with real-time progress indicator (uploading → embedding → done).
 - **System Status Polling** — Frontend polls `/api/status` every 15 seconds for live Ollama health, chunk counts, and model info.
+- **Stop Generation** — Users can abort a streaming response mid-flight via the Stop button.
+- **Clear Controls** — Clear chat history or wipe the entire vectorstore from the sidebar.
 
 ---
 
@@ -43,7 +46,7 @@
 | Requirement | Version | Notes |
 |---|---|---|
 | Python | 3.10 + | Python 3.14 works with warnings |
-| Node.js | 20 + | For the React frontend |
+| Node.js | 18 + | For the React/Vite frontend |
 | Ollama | Latest | Must be running locally |
 | `phi3` model | — | `ollama pull phi3` |
 
@@ -73,7 +76,7 @@ pip install -r requirements.txt
 python run.py
 ```
 
-API will be live at **http://localhost:8000**  
+API will be live at **http://localhost:8000**
 Swagger docs at **http://localhost:8000/docs**
 
 ---
@@ -88,6 +91,8 @@ npm run dev
 
 App will be live at **http://localhost:5173**
 
+> The Vite dev server automatically proxies all `/api/*` requests to the FastAPI backend on port 8000 — no CORS issues during development.
+
 ---
 
 ## API Reference
@@ -99,6 +104,7 @@ App will be live at **http://localhost:5173**
 | `POST` | `/api/upload` | Upload one or more PDF files for ingestion |
 | `POST` | `/api/chat` | Send a query + history; streams plain-text tokens |
 | `DELETE` | `/api/documents` | Wipe the entire vectorstore and reset pipeline state |
+| `GET` | `/docs` | Auto-generated Swagger UI (FastAPI built-in) |
 
 ### Chat Request Schema
 
@@ -117,17 +123,17 @@ POST /api/chat
 
 ```json
 {
-  "loaded":  ["file1.pdf"],
-  "skipped": [],
-  "failed":  [],
-  "chunks":  42,
+  "loaded":       ["file1.pdf"],
+  "skipped":      [],
+  "failed":       [],
+  "chunks":       42,
   "total_chunks": 182
 }
 ```
 
 ### Chat Response
 
-Plain-text streaming response. Sources are appended as a trailer at the end of the stream:
+Plain-text streaming response. Sources are appended as a trailer at the very end of the stream:
 
 ```
 ...last token of the answer|||SOURCES|||filename.pdf — Page 3|||filename.pdf — Page 7
@@ -137,7 +143,12 @@ Plain-text streaming response. Sources are appended as a trailer at the end of t
 
 ## Configuration
 
-Create a `.env` file in the `backend/` directory (a template `.env` is already included):
+Copy `.env.example` to `.env` inside the `backend/` directory and adjust as needed:
+
+```powershell
+cd backend
+copy .env.example .env
+```
 
 ```env
 # Model settings
@@ -167,52 +178,51 @@ DOCUMENTS_DIR=documents
 ```
 Rag-master/
 │
-├── app.py                        # Legacy Streamlit single-file app (standalone)
-├── ingest.py                     # Standalone CLI ingestion script
-├── evaluate.py                   # RAG evaluation harness
-├── test_rag.py                   # Unit & integration tests
-├── requirements.txt              # Root-level Python deps (Streamlit app)
 ├── README.md
+├── claude_info.md                # Project Q&A / info sheet
+├── documents/                    # Drop PDFs here for bulk ingestion (CLI)
+│   └── .gitkeep
 │
-├── documents/                    # Drop PDFs here for bulk ingestion
-│   ├── data science.pdf
-│   ├── ml.pdf
-│   └── sample.pdf
-│
-├── vectorstore/                  # Persisted Chroma DB (auto-created)
+├── vectorstore/                  # Persisted Chroma DB (auto-created at runtime)
 │
 ├── backend/                      # FastAPI production backend
-│   ├── run.py                    # Dev server launcher (uvicorn)
-│   ├── requirements.txt          # Backend Python dependencies
-│   ├── .env                      # Environment configuration
-│   ├── documents/                # Backend-side document storage
+│   ├── run.py                    # Dev server launcher — uvicorn on port 8000
+│   ├── ingest.py                 # Standalone CLI ingestion script (batch PDFs)
+│   ├── evaluate.py               # RAGAS evaluation harness (Faithfulness, Relevancy, Precision)
+│   ├── requirements.txt          # All Python dependencies
+│   ├── .env.example              # Environment variable template
+│   ├── .env                      # Your local config (not committed)
+│   ├── documents/                # Backend-side PDF storage
+│   ├── vectorstore/              # Backend-side persisted Chroma DB
+│   ├── tests/
+│   │   └── test_rag.py           # 7-step end-to-end pipeline test suite
 │   └── app/
 │       ├── __init__.py
 │       ├── config.py             # Centralised config (reads from .env)
-│       ├── main.py               # FastAPI app + all route handlers
-│       └── pipeline.py           # RAG core — embed, ingest, search, rerank, stream
+│       ├── main.py               # FastAPI app + all 5 route handlers
+│       └── pipeline.py           # RAG core — embed, ingest, hybrid search, rerank, stream
 │
-└── frontend/                     # React + Vite + TailwindCSS frontend
-    ├── index.html                # Standalone vanilla HTML/CSS/JS UI (entry point)
-    ├── package.json
-    ├── vite.config.js            # Vite config — proxies /api/* → :8000
-    ├── tailwind.config.js
+└── frontend/                     # React 18 + Vite + TailwindCSS frontend
+    ├── index.html                # Vite entry point (React app root)
+    ├── package.json              # Node dependencies: react, vite, tailwindcss, lucide-react
+    ├── vite.config.js            # Vite config — proxies /api/* → localhost:8000
+    ├── tailwind.config.js        # TailwindCSS config with custom design tokens
     ├── postcss.config.js
     ├── public/
     │   └── favicon.svg
-    └── src/                      # React component tree (alternative UI)
+    └── src/
         ├── main.jsx              # ReactDOM root mount
-        ├── App.jsx               # Root layout — wires hooks to components
-        ├── index.css             # Global styles + TailwindCSS + design tokens
+        ├── index.css             # Global styles — glassmorphism, animations, design tokens
+        ├── App.jsx               # Root layout — wires hooks to Sidebar + ChatFeed + ChatInput
         ├── components/
         │   ├── Sidebar.jsx       # Left panel: branding, status, upload, doc list, controls
         │   ├── ChatFeed.jsx      # Scrollable message history + live streaming bubble
-        │   ├── ChatInput.jsx     # Auto-resizing textarea + send / stop buttons
+        │   ├── ChatInput.jsx     # Auto-resizing textarea + Send / Stop buttons
         │   ├── UploadCard.jsx    # Drag-and-drop PDF uploader with status states
-        │   ├── StatusBadge.jsx   # Ollama connection indicator badge
-        │   └── SourceChips.jsx   # Attributed document source chips
+        │   ├── StatusBadge.jsx   # Ollama connection indicator (online / offline / loading)
+        │   └── SourceChips.jsx   # Attributed document source chips below assistant messages
         └── hooks/
-            ├── useChat.js        # Chat state, streaming, history, abort controller
+            ├── useChat.js        # Chat state, streaming fetch, history, abort controller
             ├── useDocuments.js   # Upload, fetch, and clear document state
             └── useStatus.js      # Polls /api/status every 15 s
 ```
@@ -222,41 +232,41 @@ Rag-master/
 ## Backend — Key Files
 
 ### `backend/app/config.py`
-Centralised configuration loaded from environment variables / `.env`. Defines paths, model names, RAG hyperparameters, and CORS allowed origins.
+Centralised configuration loaded from environment variables / `.env`. Defines paths, model names, RAG hyperparameters, and CORS allowed origins. All values have sensible defaults — the app works out of the box without a `.env` file.
 
 ### `backend/app/pipeline.py`
-The RAG engine. All models are singletons loaded lazily at first use and cached for the lifetime of the server process.
+The RAG engine. All models are singletons loaded lazily at first use and cached for the lifetime of the server process. Thread-safe via a module-level lock.
 
 | Function | Description |
 |---|---|
-| `bootstrap()` | Loads persisted Chroma DB + rebuilds BM25 index from disk at startup |
-| `ingest_documents()` | Loads PDFs → splits into chunks → embeds → stores in Chroma + BM25 |
-| `hybrid_search()` | Runs vector retrieval (Chroma) + keyword retrieval (BM25), deduplicates |
-| `rerank()` | Scores candidate docs with cross-encoder, returns top-K |
-| `stream_answer()` | Async generator: builds prompt with history + context, streams tokens from Ollama, appends `|||SOURCES|||` marker |
-| `get_status()` | Pings Ollama `/api/tags`, returns health dict |
+| `bootstrap()` | Called at startup — loads persisted Chroma DB and rebuilds BM25 index from disk |
+| `ingest_documents()` | Loads PDFs → splits into chunks → embeds → stores in Chroma + rebuilds BM25 |
+| `hybrid_search()` | Runs vector retrieval (Chroma) + keyword retrieval (BM25), deduplicates results |
+| `rerank()` | Scores candidate docs with CrossEncoder, returns top-K by relevance |
+| `stream_answer()` | Async generator — builds prompt with history + context, streams tokens from Ollama, appends `\|\|\|SOURCES\|\|\|` marker |
+| `get_status()` | Pings Ollama `/api/tags`, returns full health + config dict |
 
 ### `backend/app/main.py`
-FastAPI application with CORS middleware. Handles file I/O (temp file creation/cleanup) for uploads and wraps `pipeline.stream_answer()` in a `StreamingResponse`.
+FastAPI application with CORS middleware and lifespan-based startup bootstrap. Handles temp file creation/cleanup for uploads and wraps `pipeline.stream_answer()` in a `StreamingResponse`.
 
 ---
 
 ## Frontend — Key Files
 
-### `frontend/index.html`
-Self-contained vanilla HTML/CSS/JS single-page application. Handles all API communication, drag-and-drop file selection, live streaming response decoding, source chip rendering, and a lightweight Markdown formatter — all without any build step required.
-
 ### `frontend/src/App.jsx`
-Root React component. Composes `useStatus`, `useDocuments`, and `useChat` hooks and distributes state as props down to `Sidebar`, `ChatFeed`, and `ChatInput`.
+Root React component. Composes `useStatus`, `useDocuments`, and `useChat` hooks and distributes state as props to `Sidebar`, `ChatFeed`, and `ChatInput`. Handles cross-cutting actions like clear-all (clears vectorstore + chat history + refreshes status).
 
 ### `frontend/src/hooks/useChat.js`
-Manages conversation messages. On `sendMessage()`, opens a streaming fetch to `/api/chat`, accumulates tokens into `streamText`, then parses the final `|||SOURCES|||` trailer before committing the finished message to history.
+Manages conversation messages. On `sendMessage()`, opens a streaming fetch to `/api/chat`, accumulates tokens into `streamText`, then parses the final `|||SOURCES|||` trailer before committing the finished message to history. Supports `stopStreaming()` via an `AbortController`.
 
 ### `frontend/src/hooks/useDocuments.js`
-Handles `uploadFiles()` (POST multipart to `/api/upload`), `fetchDocuments()` (GET `/api/documents`), and `clearDocuments()` (DELETE `/api/documents`).
+Handles `uploadFiles()` (POST multipart to `/api/upload`), `fetchDocuments()` (GET `/api/documents`), and `clearDocuments()` (DELETE `/api/documents`). Tracks `uploadProgress` states: `uploading → processing → done | error`.
 
 ### `frontend/src/hooks/useStatus.js`
 Polls `GET /api/status` every **15 seconds** and exposes Ollama health, active model name, chunk count, and pipeline config to the UI.
+
+### `frontend/src/index.css`
+Global stylesheet with full glassmorphism design system: animated gradient background, glass-card component, streaming cursor animation, source chip, drop zone, skeleton shimmer, badge variants, and custom scrollbar styling.
 
 ---
 
@@ -269,20 +279,68 @@ proxy: {
   '/api': {
     target: 'http://localhost:8000',
     changeOrigin: true,
+    secure: false,
   }
 }
 ```
 
 ---
 
-## Legacy / Standalone Files
+## CLI Tools
 
-| File | Purpose |
+### Batch Ingestion (`backend/ingest.py`)
+
+Ingest all PDFs from the `documents/` folder directly from the command line — no server required:
+
+```powershell
+cd backend
+python ingest.py
+```
+
+Idempotent: if the vectorstore already exists, new chunks are added without rebuilding. Skips unreadable or empty files gracefully.
+
+### RAGAS Evaluation (`backend/evaluate.py`)
+
+Runs automated quality evaluation against a curated set of Q&A pairs using three RAGAS metrics:
+
+| Metric | What it measures |
 |---|---|
-| `app.py` | Original Streamlit single-file RAG app — runs independently without the backend/frontend split |
-| `ingest.py` | CLI script to bulk-ingest PDFs from the `documents/` folder directly |
-| `evaluate.py` | Evaluates RAG answer quality against a set of ground-truth Q&A pairs |
-| `test_rag.py` | Unit and integration tests for the RAG pipeline |
+| **Faithfulness** | Are the answers grounded in the retrieved context? |
+| **Answer Relevancy** | Is the answer relevant to the question asked? |
+| **Context Precision** | Are the retrieved chunks relevant to the question? |
+
+```powershell
+cd backend
+pip install ragas>=0.1.7 datasets
+python evaluate.py
+```
+
+Pass threshold is **0.7** per metric. Results are printed per-question and as aggregate averages.
+
+---
+
+## Running Tests
+
+The test suite covers every pipeline component end-to-end:
+
+```powershell
+cd backend
+python tests/test_rag.py
+```
+
+**7 test stages:**
+
+| Stage | What's tested |
+|---|---|
+| 1 — Imports | All required packages importable |
+| 2 — Ollama | Server reachable + phi3 inference works |
+| 3 — Embeddings | `all-MiniLM-L6-v2` produces correct-dimension vectors |
+| 4 — Vectorstore | Chroma DB exists, loads, and returns similarity results |
+| 5 — BM25 | Index builds from stored chunks and scores queries correctly |
+| 6 — Reranker | CrossEncoder ranks relevant doc above irrelevant doc |
+| 7 — Full RAG | Complete retrieve → rerank → LLM pipeline returns a valid answer |
+
+> **Note:** Run `python ingest.py` at least once before running tests so the vectorstore exists.
 
 ---
 
@@ -290,9 +348,35 @@ proxy: {
 
 | Problem | Fix |
 |---|---|
-| `Ollama offline` shown in header | Run `ollama serve` and confirm `phi3` is pulled |
-| Backend won't start | Check Python version ≥ 3.10; install deps with `pip install -r backend/requirements.txt` |
-| Upload fails silently | Ensure the file is a valid PDF; check backend terminal for detailed error logs |
-| Same document keeps being re-uploaded | The backend deduplicates by filename. Rename the file if you need to re-ingest |
-| Chat input disabled | Documents must be loaded first — upload at least one PDF |
-| Frontend can't reach backend | Confirm FastAPI is running on port 8000 and Vite proxy is active (`npm run dev`) |
+| `Ollama offline` shown in header | Run `ollama serve` and confirm `phi3` is pulled with `ollama pull phi3` |
+| Backend won't start | Check Python ≥ 3.10 and install deps: `pip install -r backend/requirements.txt` |
+| Upload fails silently | Ensure the file is a valid PDF; check the backend terminal for detailed error logs |
+| Same document keeps being re-uploaded | The backend deduplicates by filename. Rename the file if you need to re-ingest it |
+| Chat input is disabled | At least one PDF must be uploaded and indexed before chatting |
+| Frontend can't reach backend | Confirm FastAPI is running on port 8000 and you started the frontend with `npm run dev` |
+| BM25 returns no results after restart | BM25 is rebuilt in-memory from Chroma on every startup — this is normal |
+| RAGAS evaluation fails to import | Run `pip install ragas>=0.1.7 datasets` inside the backend virtual environment |
+
+---
+
+## Known Limitations
+
+- **PDF only** — No support for DOCX, TXT, or web URLs yet
+- **CPU inference** — Embedding and reranking run on CPU by default; no GPU config exposed
+- **No authentication** — All API endpoints are open; add an auth layer before any public deployment
+- **BM25 not persisted** — Rebuilt in-memory from Chroma on each server restart
+- **Single shared vectorstore** — No per-user session isolation
+
+---
+
+## Roadmap
+
+- [ ] DOCX and TXT file support
+- [ ] GPU-aware embedding (CUDA device selection via env var)
+- [ ] Per-document delete (remove individual files without clearing all)
+- [ ] Persistent BM25 index (serialised to disk)
+- [ ] Docker Compose for one-command local deployment
+- [ ] User authentication (JWT / API key)
+- [ ] Switchable Ollama model from the UI
+- [ ] Chat export (Markdown / PDF download)
+- [ ] Evaluation dashboard UI (RAGAS scores visualised)
