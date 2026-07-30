@@ -7,7 +7,7 @@ Usage:
 Measures Faithfulness, Answer Relevancy, and Context Precision
 using curated QA pairs grounded in the actual documents.
 
-Requires Ollama to be running (phi3 model by default).
+Requires GROQ_API_KEY to be set in .env (llama-3.1-8b-instant by default).
 """
 
 import os
@@ -17,8 +17,8 @@ from dotenv import load_dotenv
 # Load HF_TOKEN and other env variables
 load_dotenv()
 
-MODEL_NAME = os.getenv("MODEL_NAME", "phi3")
-
+MODEL_NAME   = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 # ─────────────────────────────────────────
 # Imports
 # FIXED: correct RAGAS import path.
@@ -39,8 +39,8 @@ except ImportError as e:
 
 from datasets import Dataset
 
-from langchain_community.llms import Ollama
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_groq import ChatGroq
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # FIXED: RAGAS >=0.1 requires LangchainLLMWrapper and LangchainEmbeddingsWrapper
 # Passing raw Langchain objects directly causes TypeError in newer RAGAS versions.
@@ -56,19 +56,22 @@ except ImportError:
 # ─────────────────────────────────────────
 # Init models
 # ─────────────────────────────────────────
-print(f"[INFO] Loading LLM: {MODEL_NAME} (Ollama)")
+print(f"[INFO] Loading LLM: {MODEL_NAME} (Groq)")
+if not GROQ_API_KEY:
+    print("[ERROR] GROQ_API_KEY is not set. Add it to your .env file.")
+    sys.exit(1)
 try:
-    llm_raw = Ollama(model=MODEL_NAME)
+    llm_raw = ChatGroq(model=MODEL_NAME, api_key=GROQ_API_KEY)
     # Quick liveness check
     llm_raw.invoke("ping")
 except Exception as e:
-    print(f"[ERROR] Cannot connect to Ollama: {e}")
-    print("  Make sure Ollama is running: ollama serve")
-    print(f"  And the model is pulled:     ollama pull {MODEL_NAME}")
+    print(f"[ERROR] Cannot connect to Groq: {e}")
+    print("  Check that GROQ_API_KEY is valid and the model name is correct.")
     sys.exit(1)
 
-print("[INFO] Loading embedding model: all-MiniLM-L6-v2")
-embed_raw = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
+print(f"[INFO] Loading embedding model: {EMBED_MODEL}")
+embed_raw = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
 
 # Wrap if needed
 if USE_WRAPPERS:
@@ -160,13 +163,22 @@ try:
 
     print("\n📈 Aggregate Scores:")
     PASS_THRESHOLD = 0.7
+    any_failed = False
     for metric in ["faithfulness", "answer_relevancy", "context_precision"]:
         if metric in results_df.columns:
             avg    = results_df[metric].mean()
-            status = "✅ PASS" if avg >= PASS_THRESHOLD else "❌ BELOW THRESHOLD"
+            passed = avg >= PASS_THRESHOLD
+            status = "✅ PASS" if passed else "❌ BELOW THRESHOLD"
+            if not passed:
+                any_failed = True
             print(f"  {metric:<25} avg = {avg:.4f}   {status}")
     print(f"\n  (Pass threshold: {PASS_THRESHOLD})")
+
+    if any_failed:
+        print("\n❌ Evaluation FAILED — one or more metrics below threshold.")
+        sys.exit(1)
 except Exception as e:
     print(f"[WARN] Could not generate per-question breakdown: {e}")
+    sys.exit(1)
 
-print("\n✅ Evaluation complete.")
+print("\n✅ Evaluation complete — all metrics passed.")

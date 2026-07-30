@@ -1,0 +1,37 @@
+name: RAG Quality Evaluation
+
+# Run this workflow whenever code is pushed or a PR is opened against main
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install evaluation dependencies
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install "ragas==0.3.9" "langchain-community==0.3.27" \
+                      datasets langchain-groq langchain-huggingface \
+                      sentence-transformers python-dotenv
+
+      - name: Run RAGAS evaluation
+        working-directory: backend
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MODEL_NAME: llama-3.1-8b-instant
+          EMBED_MODEL: all-MiniLM-L6-v2
+        run: python evaluate.py

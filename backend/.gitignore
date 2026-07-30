@@ -1,0 +1,13 @@
+# Environments
+backend/.env
+backend/venv/
+backend/venv-eval/
+frontend/node_modules/
+
+# Data
+backend/vectorstore/
+backend/documents/
+
+# Python cache
+__pycache__/
+*.pyc

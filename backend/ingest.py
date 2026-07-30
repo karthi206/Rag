@@ -20,10 +20,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 
-# FIXED: Use SentenceTransformerEmbeddings to MATCH app.py exactly.
-# Previously this file used HuggingFaceEmbeddings (langchain_huggingface) while
-# app.py used SentenceTransformerEmbeddings (langchain_community) — a mismatch
-# that would cause retrieval to use completely different embedding spaces.
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 
 
@@ -139,7 +135,7 @@ else:
 # -----------------------------
 # Summary
 # -----------------------------
-total_in_db = db._collection.count()
+total_in_db = len(db.get()["documents"])
 print(f"\n{'='*50}")
 print(f"  INGESTION COMPLETE")
 print(f"{'='*50}")
