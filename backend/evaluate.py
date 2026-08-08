@@ -13,7 +13,7 @@ Requires GROQ_API_KEY to be set in .env (llama-3.1-8b-instant by default).
 import os
 import sys
 from dotenv import load_dotenv
-
+from ragas.run_config import RunConfig
 # Load HF_TOKEN and other env variables
 load_dotenv()
 
@@ -136,12 +136,21 @@ print("=" * 60 + "\n")
 # ─────────────────────────────────────────
 # Run RAGAS evaluation
 # ─────────────────────────────────────────
+eval_run_config = RunConfig(
+    timeout=180,
+    max_retries=10,
+    max_wait=60,
+    max_workers=2,
+)
+
 try:
     results = evaluate(
         dataset,
         metrics=[faithfulness, answer_relevancy, context_precision],
         llm=llm_eval,
         embeddings=embed_eval,
+        run_config=eval_run_config,
+        raise_exceptions=True,  # surface real errors instead of silent NaN
     )
 except Exception as e:
     print(f"[ERROR] RAGAS evaluation failed: {e}")
