@@ -24,6 +24,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDoc
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
+from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
 
 from app.config import (
     VECTORSTORE_DIR, EMBED_MODEL, RERANK_MODEL,
@@ -192,6 +194,7 @@ def ingest_documents(file_paths: List[Tuple[str, str]]) -> dict:
 # ─────────────────────────────────────────────────────────────────
 # Hybrid search
 # ─────────────────────────────────────────────────────────────────
+@traceable(name="hybrid_search", run_type="retriever")
 def hybrid_search(query: str, k: int = K_RETRIEVE) -> List[LCDoc]:
     if _db is None:
         return []
@@ -220,6 +223,7 @@ def hybrid_search(query: str, k: int = K_RETRIEVE) -> List[LCDoc]:
 # ─────────────────────────────────────────────────────────────────
 # Re-ranking
 # ─────────────────────────────────────────────────────────────────
+@traceable(name="rerank", run_type="chain")
 def rerank(query: str, docs: List[LCDoc], top_k: int = K_RETRIEVE) -> List[Tuple[LCDoc, float]]:
     """Returns (doc, score) pairs, best first, so callers can check confidence."""
     if not docs:
@@ -234,6 +238,7 @@ def rerank(query: str, docs: List[LCDoc], top_k: int = K_RETRIEVE) -> List[Tuple
 # ─────────────────────────────────────────────────────────────────
 # LLM streaming answer generator
 # ─────────────────────────────────────────────────────────────────
+@traceable(name="rag_query", run_type="chain")
 async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
     raw_docs   = hybrid_search(query)
     ranked     = rerank(query, raw_docs)  # list of (doc, score)
@@ -243,6 +248,21 @@ async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGene
     # refuse to answer instead of letting the AI guess. This does not rely
     # on the AI "choosing" to follow instructions.
     best_score = ranked[0][1] if ranked else None
+    answered   = bool(ranked) and not (best_score is not None and best_score < MIN_RERANK_SCORE)
+
+    # Tag this trace with RAG-specific metadata Langsmith wouldn't know
+    # about automatically — this is what lets us compute "citation
+    # coverage" (% of queries actually answered vs refused) later.
+    run = get_current_run_tree()
+    if run is not None:
+        run.extra = run.extra or {}
+        run.extra["metadata"] = {
+            **(run.extra.get("metadata") or {}),
+            "answered":             answered,
+            "best_rerank_score":    float(best_score) if best_score is not None else None,
+            "num_chunks_retrieved": len(raw_docs),
+        }
+
     if not ranked or best_score < MIN_RERANK_SCORE:
         logger.info(
             "Refusing to answer — best match score %s below threshold %s",
@@ -260,6 +280,9 @@ async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGene
         source = doc.metadata.get("source", "document")
         if page is not None:
             sources.add(f"{source} — Page {int(page) + 1}")
+
+    if run is not None:
+        run.extra["metadata"]["num_sources_cited"] = len(sources)
 
     recent_history = history[-(MAX_HISTORY_TURNS * 2):]
     history_text   = "".join(f"{r}: {m}\n" for r, m in recent_history)

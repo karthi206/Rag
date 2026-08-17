@@ -6,7 +6,7 @@ frontend/node_modules/
 
 # Data
 backend/vectorstore/
-backend/documents/
+backend/tests/documents/
 
 # Python cache
 __pycache__/
