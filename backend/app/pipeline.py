@@ -18,12 +18,17 @@ from typing import AsyncGenerator, List, Tuple, Optional
 
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+<<<<<<< HEAD
 from langchain_groq import ChatGroq
+=======
+from langchain_ollama import OllamaLLM
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document as LCDoc
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
+<<<<<<< HEAD
 from langsmith import traceable
 from langsmith.run_helpers import get_current_run_tree
 
@@ -31,10 +36,17 @@ from app.config import (
     VECTORSTORE_DIR, EMBED_MODEL, RERANK_MODEL,
     MODEL_NAME, K_RETRIEVE, CHUNK_SIZE, CHUNK_OVERLAP, MAX_HISTORY_TURNS,
     PROMPT_VERSION, GROQ_API_KEY
+=======
+
+from app.config import (
+    VECTORSTORE_DIR, EMBED_MODEL, RERANK_MODEL,
+    MODEL_NAME, K_RETRIEVE, CHUNK_SIZE, CHUNK_OVERLAP, MAX_HISTORY_TURNS
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 )
 
 logger = logging.getLogger(__name__)
 
+<<<<<<< HEAD
 PROMPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts")
 
 # Below this score, we don't trust the search results enough to let the
@@ -48,6 +60,8 @@ def load_prompt_template() -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
+=======
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 # ─────────────────────────────────────────────────────────────────
 # Singleton state (module-level, protected by a lock for thread safety)
 # ─────────────────────────────────────────────────────────────────
@@ -55,7 +69,11 @@ _lock = threading.Lock()
 
 _embeddings: Optional[HuggingFaceEmbeddings] = None
 _reranker:   Optional[CrossEncoder]           = None
+<<<<<<< HEAD
 _llm:        Optional[ChatGroq]              = None
+=======
+_llm:        Optional[OllamaLLM]              = None
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 _db:         Optional[Chroma]                         = None
 _bm25:       Optional[BM25Okapi]                      = None
 _splits:     List[LCDoc]                          = []
@@ -81,11 +99,19 @@ def get_reranker() -> CrossEncoder:
     return _reranker
 
 
+<<<<<<< HEAD
 def get_llm() -> ChatGroq:
     global _llm
     if _llm is None:
         logger.info("Connecting to Groq model: %s", MODEL_NAME)
         _llm = ChatGroq(model=MODEL_NAME, api_key=GROQ_API_KEY, streaming=True)
+=======
+def get_llm() -> OllamaLLM:
+    global _llm
+    if _llm is None:
+        logger.info("Connecting to Ollama model: %s", MODEL_NAME)
+        _llm = OllamaLLM(model=MODEL_NAME)
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
     return _llm
 
 
@@ -194,7 +220,10 @@ def ingest_documents(file_paths: List[Tuple[str, str]]) -> dict:
 # ─────────────────────────────────────────────────────────────────
 # Hybrid search
 # ─────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 @traceable(name="hybrid_search", run_type="retriever")
+=======
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 def hybrid_search(query: str, k: int = K_RETRIEVE) -> List[LCDoc]:
     if _db is None:
         return []
@@ -223,21 +252,31 @@ def hybrid_search(query: str, k: int = K_RETRIEVE) -> List[LCDoc]:
 # ─────────────────────────────────────────────────────────────────
 # Re-ranking
 # ─────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 @traceable(name="rerank", run_type="chain")
 def rerank(query: str, docs: List[LCDoc], top_k: int = K_RETRIEVE) -> List[Tuple[LCDoc, float]]:
     """Returns (doc, score) pairs, best first, so callers can check confidence."""
+=======
+def rerank(query: str, docs: List[LCDoc], top_k: int = K_RETRIEVE) -> List[LCDoc]:
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
     if not docs:
         return []
     reranker = get_reranker()
     pairs    = [(query, doc.page_content) for doc in docs]
     scores   = reranker.predict(pairs)
+<<<<<<< HEAD
     ranked   = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
     return ranked[:top_k]
+=======
+    ranked   = sorted(zip(scores, docs), key=lambda x: x[0], reverse=True)
+    return [doc for _, doc in ranked[:top_k]]
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 
 
 # ─────────────────────────────────────────────────────────────────
 # LLM streaming answer generator
 # ─────────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 @traceable(name="rag_query", run_type="chain")
 async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
     raw_docs   = hybrid_search(query)
@@ -273,6 +312,12 @@ async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGene
         return
 
     docs = [doc for doc, _ in ranked]
+=======
+async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
+    docs = hybrid_search(query)
+    docs = rerank(query, docs)
+
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
     context = "\n\n".join(doc.page_content for doc in docs)
 
     sources = set()
@@ -282,6 +327,7 @@ async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGene
         if page is not None:
             sources.add(f"{source} — Page {int(page) + 1}")
 
+<<<<<<< HEAD
     if run is not None:
         run.extra["metadata"]["num_sources_cited"] = len(sources)
 
@@ -294,14 +340,36 @@ async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGene
         context=context,
         query=query,
     )
+=======
+    recent_history = history[-(MAX_HISTORY_TURNS * 2):]
+    history_text   = "".join(f"{r}: {m}\n" for r, m in recent_history)
+
+    prompt = f"""You are a precise document assistant. Answer ONLY from the context below.
+If the answer is not in the documents, say: "I cannot find the answer in the provided documents."
+Be concise and factual. Do not make up information.
+
+Conversation history (last {MAX_HISTORY_TURNS} turns):
+{history_text}
+Document context:
+{context}
+
+Question: {query}
+
+Answer:"""
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 
     llm = get_llm()
 
     # Stream tokens
     for chunk in llm.stream(prompt):
+<<<<<<< HEAD
         text = chunk.content if hasattr(chunk, "content") else chunk
         if text:
             yield text
+=======
+        if chunk:
+            yield chunk
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 
     # After streaming completes, yield a special sources marker
     if sources:
@@ -313,11 +381,28 @@ async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGene
 # Status helpers
 # ─────────────────────────────────────────────────────────────────
 def get_status() -> dict:
+<<<<<<< HEAD
     llm_online = bool(GROQ_API_KEY)
 
     return {
         "llm_online":     llm_online,
         "llm_provider":   "groq",
+=======
+    import urllib.request, json as _json
+    ollama_ok  = False
+    ollama_models = []
+    try:
+        r = urllib.request.urlopen("http://localhost:11434/api/tags", timeout=3)
+        data = _json.loads(r.read())
+        ollama_models = [m["name"] for m in data.get("models", [])]
+        ollama_ok = True
+    except Exception:
+        pass
+
+    return {
+        "ollama":         ollama_ok,
+        "ollama_models":  ollama_models,
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
         "active_model":   MODEL_NAME,
         "embed_model":    EMBED_MODEL,
         "rerank_model":   RERANK_MODEL,
@@ -328,6 +413,7 @@ def get_status() -> dict:
         "chunk_size":     CHUNK_SIZE,
         "chunk_overlap":  CHUNK_OVERLAP,
     }
+<<<<<<< HEAD
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -378,3 +464,5 @@ def hybrid_search(query: str, k: int = 15) -> List[LCDoc]:
             seen.add(doc.page_content)
 
     return unique_docs  # don't truncate to k here — let rerank() do the final cut
+=======
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f

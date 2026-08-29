@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 
+=======
+# FastAPI RAG Backend Dependencies
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 # Install with: pip install -r requirements.txt
 
 # ─── Core web framework ───────────────────────────────────────
@@ -11,7 +15,11 @@ langchain>=0.1.0
 langchain-community>=0.0.20
 langchain-text-splitters>=0.0.1
 
+<<<<<<< HEAD
 # ─── LangChain integrations (modern, non-deprecated─────────
+=======
+# ─── LangChain integrations (modern, non-deprecated) ─────────
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 langchain-chroma>=0.1.0
 langchain-ollama>=0.1.0
 langchain-huggingface>=0.0.3
@@ -31,6 +39,7 @@ pypdf>=3.17.0
 # ─── Utilities ────────────────────────────────────────────────
 python-dotenv>=1.0.0
 torch>=2.1.0
+<<<<<<< HEAD
 
 langchain-groq>=0.1.0
 
@@ -38,3 +47,5 @@ ragas>=0.1.7
 datasets>=2.19.0
 
 langsmith>=0.1.0
+=======
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f

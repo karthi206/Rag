@@ -10,6 +10,10 @@ Endpoints:
 """
 
 import os
+<<<<<<< HEAD
+=======
+import shutil
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 import tempfile
 import logging
 from contextlib import asynccontextmanager
@@ -89,10 +93,25 @@ async def list_documents():
 async def clear_documents():
     """Clears the vectorstore and resets the pipeline state."""
     try:
+<<<<<<< HEAD
         pipeline.clear_vectorstore()
         return {"message": "Vectorstore cleared successfully."}
     except Exception as exc:
         logger.exception("Failed to clear documents")
+=======
+        if os.path.exists(VECTORSTORE_DIR):
+            shutil.rmtree(VECTORSTORE_DIR)
+            os.makedirs(VECTORSTORE_DIR, exist_ok=True)
+
+        # Reset in-memory state
+        pipeline._db               = None
+        pipeline._bm25             = None
+        pipeline._splits           = []
+        pipeline._ingested_sources = set()
+
+        return {"message": "Vectorstore cleared successfully."}
+    except Exception as exc:
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -174,4 +193,8 @@ async def chat(request: ChatRequest):
 # ─────────────────────────────────────────────────────────────────
 @app.get("/")
 async def root():
+<<<<<<< HEAD
     return {"message": "RAG Document Assistant API v2.0 — see /docs for Swagger UI"}
+=======
+    return {"message": "RAG Document Assistant API v2.0 — see /docs for Swagger UI"}
+>>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
