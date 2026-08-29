@@ -88,6 +88,9 @@ else:
 # Evaluation dataset
 # QA pairs grounded in the actual documents:
 #   - data science.pdf, ml.pdf, sample.pdf
+#
+# NOTE: "contexts" must contain every fact stated in "answer", or
+# RAGAS faithfulness will (correctly) score claims as unsupported.
 # ─────────────────────────────────────────
 data = {
     "question": [
@@ -107,12 +110,45 @@ data = {
         "Deep learning is a subset of machine learning that uses multi-layered neural networks to model complex patterns in large datasets.",
     ],
     "contexts": [
-        ["AI attempts to build intelligent entities that can perceive, reason, learn, and act."],
-        ["Machine learning involves algorithms that learn from training data and improve predictions over time."],
-        ["Supervised learning trains on labelled data. Unsupervised learning discovers structure in unlabelled data."],
-        ["Data science combines statistics, programming, and domain knowledge to analyse and interpret complex data."],
-        ["Neural networks consist of an input layer, hidden layers, and an output layer, each containing nodes with weighted connections."],
-        ["Deep learning models use many hidden layers to extract hierarchical features from raw data."],
+        [
+            "Artificial intelligence (AI) is the simulation of human intelligence "
+            "processes by machines, especially computer systems. AI attempts to "
+            "build intelligent entities that can perceive, reason, learn, and act. "
+            "These systems are programmed to think and learn like humans and "
+            "mimic their actions."
+        ],
+        [
+            "Machine learning is a subset of artificial intelligence that enables "
+            "systems to automatically learn and improve from experience without "
+            "being explicitly programmed. Machine learning involves algorithms "
+            "that learn from training data and improve predictions over time."
+        ],
+        [
+            "Supervised learning uses labelled training data to learn a mapping "
+            "from inputs to outputs, training on data where the correct answer "
+            "is already known. Unsupervised learning finds hidden patterns in "
+            "data without labelled examples, discovering structure in unlabelled "
+            "data on its own."
+        ],
+        [
+            "Data science is an interdisciplinary field that uses scientific "
+            "methods, algorithms, and systems to extract knowledge and insights "
+            "from structured and unstructured data. It combines statistics, "
+            "programming, and domain knowledge to analyse and interpret complex "
+            "data."
+        ],
+        [
+            "A neural network is a computational model inspired by the structure "
+            "of the human brain. Neural networks consist of an input layer, "
+            "hidden layers, and an output layer, each containing interconnected "
+            "nodes (neurons) with weighted connections that process data."
+        ],
+        [
+            "Deep learning is a subset of machine learning that uses "
+            "multi-layered neural networks to model complex patterns in large "
+            "datasets. Deep learning models use many hidden layers to extract "
+            "hierarchical features from raw data."
+        ],
     ],
     "ground_truth": [
         "Artificial intelligence is the field of creating intelligent systems that can perform tasks requiring human-like intelligence.",
