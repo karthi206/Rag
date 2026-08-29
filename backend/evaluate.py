@@ -7,31 +7,20 @@ Usage:
 Measures Faithfulness, Answer Relevancy, and Context Precision
 using curated QA pairs grounded in the actual documents.
 
-<<<<<<< HEAD
 Requires GROQ_API_KEY to be set in .env (llama-3.1-8b-instant by default).
-=======
-Requires Ollama to be running (phi3 model by default).
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 """
 
 import os
 import sys
 from dotenv import load_dotenv
-<<<<<<< HEAD
 from ragas.run_config import RunConfig
+
 # Load HF_TOKEN and other env variables
 load_dotenv()
 
 MODEL_NAME   = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-=======
 
-# Load HF_TOKEN and other env variables
-load_dotenv()
-
-MODEL_NAME = os.getenv("MODEL_NAME", "phi3")
-
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 # ─────────────────────────────────────────
 # Imports
 # FIXED: correct RAGAS import path.
@@ -52,13 +41,8 @@ except ImportError as e:
 
 from datasets import Dataset
 
-<<<<<<< HEAD
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
-=======
-from langchain_community.llms import Ollama
-from langchain_community.embeddings import SentenceTransformerEmbeddings
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 
 # FIXED: RAGAS >=0.1 requires LangchainLLMWrapper and LangchainEmbeddingsWrapper
 # Passing raw Langchain objects directly causes TypeError in newer RAGAS versions.
@@ -74,7 +58,6 @@ except ImportError:
 # ─────────────────────────────────────────
 # Init models
 # ─────────────────────────────────────────
-<<<<<<< HEAD
 print(f"[INFO] Loading LLM: {MODEL_NAME} (Groq)")
 if not GROQ_API_KEY:
     print("[ERROR] GROQ_API_KEY is not set. Add it to your .env file.")
@@ -86,26 +69,11 @@ try:
 except Exception as e:
     print(f"[ERROR] Cannot connect to Groq: {e}")
     print("  Check that GROQ_API_KEY is valid and the model name is correct.")
-=======
-print(f"[INFO] Loading LLM: {MODEL_NAME} (Ollama)")
-try:
-    llm_raw = Ollama(model=MODEL_NAME)
-    # Quick liveness check
-    llm_raw.invoke("ping")
-except Exception as e:
-    print(f"[ERROR] Cannot connect to Ollama: {e}")
-    print("  Make sure Ollama is running: ollama serve")
-    print(f"  And the model is pulled:     ollama pull {MODEL_NAME}")
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
     sys.exit(1)
 
 EMBED_MODEL = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 print(f"[INFO] Loading embedding model: {EMBED_MODEL}")
-<<<<<<< HEAD
 embed_raw = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
-=======
-embed_raw = SentenceTransformerEmbeddings(model_name=EMBED_MODEL)
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 
 # Wrap if needed
 if USE_WRAPPERS:
@@ -170,7 +138,6 @@ print("=" * 60 + "\n")
 # ─────────────────────────────────────────
 # Run RAGAS evaluation
 # ─────────────────────────────────────────
-<<<<<<< HEAD
 eval_run_config = RunConfig(
     timeout=180,
     max_retries=10,
@@ -178,19 +145,14 @@ eval_run_config = RunConfig(
     max_workers=2,
 )
 
-=======
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
 try:
     results = evaluate(
         dataset,
         metrics=[faithfulness, answer_relevancy, context_precision],
         llm=llm_eval,
         embeddings=embed_eval,
-<<<<<<< HEAD
         run_config=eval_run_config,
         raise_exceptions=True,  # surface real errors instead of silent NaN
-=======
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
     )
 except Exception as e:
     print(f"[ERROR] RAGAS evaluation failed: {e}")
@@ -212,7 +174,6 @@ try:
 
     print("\n📈 Aggregate Scores:")
     PASS_THRESHOLD = 0.7
-<<<<<<< HEAD
     any_failed = False
     for metric in ["faithfulness", "answer_relevancy", "context_precision"]:
         if metric in results_df.columns:
@@ -232,15 +193,3 @@ except Exception as e:
     sys.exit(1)
 
 print("\n✅ Evaluation complete — all metrics passed.")
-=======
-    for metric in ["faithfulness", "answer_relevancy", "context_precision"]:
-        if metric in results_df.columns:
-            avg    = results_df[metric].mean()
-            status = "✅ PASS" if avg >= PASS_THRESHOLD else "❌ BELOW THRESHOLD"
-            print(f"  {metric:<25} avg = {avg:.4f}   {status}")
-    print(f"\n  (Pass threshold: {PASS_THRESHOLD})")
-except Exception as e:
-    print(f"[WARN] Could not generate per-question breakdown: {e}")
-
-print("\n✅ Evaluation complete.")
->>>>>>> 4218456db65b5d66eb915e93a076f44adecf548f
