@@ -3,9 +3,9 @@ name: RAG Quality Evaluation
 # Run this workflow whenever code is pushed or a PR is opened against main
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   evaluate:
