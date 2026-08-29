@@ -8,6 +8,12 @@ Measures Faithfulness, Answer Relevancy, and Context Precision
 using curated QA pairs grounded in the actual documents.
 
 Requires GROQ_API_KEY to be set in .env (llama-3.1-8b-instant by default).
+
+Note: the RAGAS judge model (EVAL_MODEL_NAME) is intentionally separate
+from your live app's MODEL_NAME. Faithfulness scoring requires the LLM
+to decompose answers into atomic claims and verify each one — a harder
+structured-reasoning task than normal chat, so a larger model is used
+here even if your production app runs a smaller/faster one.
 """
 
 import os
@@ -18,8 +24,11 @@ from ragas.run_config import RunConfig
 # Load HF_TOKEN and other env variables
 load_dotenv()
 
-MODEL_NAME   = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+# MODEL_NAME   — kept for reference/logging only (your live app's model)
+# EVAL_MODEL_NAME — the model actually used to JUDGE the RAGAS metrics
+MODEL_NAME      = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
+EVAL_MODEL_NAME = os.getenv("EVAL_MODEL_NAME", "openai/gpt-oss-120b")
+GROQ_API_KEY    = os.getenv("GROQ_API_KEY", "")
 
 # ─────────────────────────────────────────
 # Imports
@@ -58,12 +67,12 @@ except ImportError:
 # ─────────────────────────────────────────
 # Init models
 # ─────────────────────────────────────────
-print(f"[INFO] Loading LLM: {MODEL_NAME} (Groq)")
+print(f"[INFO] Loading judge LLM: {EVAL_MODEL_NAME} (Groq)")
 if not GROQ_API_KEY:
     print("[ERROR] GROQ_API_KEY is not set. Add it to your .env file.")
     sys.exit(1)
 try:
-    llm_raw = ChatGroq(model=MODEL_NAME, api_key=GROQ_API_KEY)
+    llm_raw = ChatGroq(model=EVAL_MODEL_NAME, api_key=GROQ_API_KEY)
     # Quick liveness check
     llm_raw.invoke("ping")
 except Exception as e:
@@ -167,7 +176,8 @@ print("  RAG EVALUATION — RAGAS Metrics")
 print("=" * 60)
 print(f"  Evaluating  : {len(data['question'])} question-answer pairs")
 print(f"  Metrics     : Faithfulness, Answer Relevancy, Context Precision")
-print(f"  LLM         : {MODEL_NAME}")
+print(f"  App model   : {MODEL_NAME}")
+print(f"  Judge model : {EVAL_MODEL_NAME}")
 print("=" * 60 + "\n")
 
 
