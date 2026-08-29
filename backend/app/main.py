@@ -10,7 +10,6 @@ Endpoints:
 """
 
 import os
-import shutil
 import tempfile
 import logging
 from contextlib import asynccontextmanager
@@ -90,18 +89,10 @@ async def list_documents():
 async def clear_documents():
     """Clears the vectorstore and resets the pipeline state."""
     try:
-        if os.path.exists(VECTORSTORE_DIR):
-            shutil.rmtree(VECTORSTORE_DIR)
-            os.makedirs(VECTORSTORE_DIR, exist_ok=True)
-
-        # Reset in-memory state
-        pipeline._db               = None
-        pipeline._bm25             = None
-        pipeline._splits           = []
-        pipeline._ingested_sources = set()
-
+        pipeline.clear_vectorstore()
         return {"message": "Vectorstore cleared successfully."}
     except Exception as exc:
+        logger.exception("Failed to clear documents")
         raise HTTPException(status_code=500, detail=str(exc))
 
 

@@ -242,7 +242,8 @@ def rerank(query: str, docs: List[LCDoc], top_k: int = K_RETRIEVE) -> List[Tuple
 async def stream_answer(query: str, history: List[Tuple[str, str]]) -> AsyncGenerator[str, None]:
     raw_docs   = hybrid_search(query)
     ranked     = rerank(query, raw_docs)  # list of (doc, score)
-
+    raw_docs   = hybrid_search(query, k=15)      # wide candidate pool
+    ranked     = rerank(query, raw_docs, top_k=K_RETRIEVE)  # narrow to 4 for the LLM
     # ── Real citation enforcement ──────────────────────────────
     # If nothing came back, or even our best match scored too low to trust,
     # refuse to answer instead of letting the AI guess. This does not rely
@@ -327,3 +328,53 @@ def get_status() -> dict:
         "chunk_size":     CHUNK_SIZE,
         "chunk_overlap":  CHUNK_OVERLAP,
     }
+
+
+# ─────────────────────────────────────────────────────────────────
+# Clear vectorstore
+# ─────────────────────────────────────────────────────────────────
+def clear_vectorstore() -> None:
+    """
+    Deletes the Chroma collection via its own API (which safely closes
+    its internal HNSW index) instead of deleting files on disk directly.
+    Avoids Windows file-lock issues entirely.
+    """
+    global _db, _bm25, _splits, _ingested_sources
+
+    with _lock:
+        if _db is not None:
+            try:
+                _db.delete_collection()
+            except Exception as exc:
+                logger.warning("delete_collection failed (continuing): %s", exc)
+            finally:
+                _db = None
+
+        _bm25             = None
+        _splits           = []
+        _ingested_sources = set()
+
+@traceable(name="hybrid_search", run_type="retriever")
+def hybrid_search(query: str, k: int = 15) -> List[LCDoc]:
+    if _db is None:
+        return []
+
+    retriever      = _db.as_retriever(search_kwargs={"k": k})
+    vector_results = retriever.invoke(query)
+
+    tokenized_query = re.findall(r"\w+", query.lower())
+    if not tokenized_query or _bm25 is None:
+        return vector_results[:k]
+
+    bm25_scores         = _bm25.get_scores(tokenized_query)
+    top_keyword_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:k]
+    keyword_results     = [_splits[i] for i in top_keyword_indices if i < len(_splits)]
+
+    combined = vector_results + keyword_results
+    seen, unique_docs = set(), []
+    for doc in combined:
+        if doc.page_content not in seen:
+            unique_docs.append(doc)
+            seen.add(doc.page_content)
+
+    return unique_docs  # don't truncate to k here — let rerank() do the final cut

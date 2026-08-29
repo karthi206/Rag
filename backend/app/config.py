@@ -34,6 +34,8 @@ MAX_HISTORY_TURNS = int(os.getenv("MAX_HISTORY_TURNS", "5"))
 K_RETRIEVE        = int(os.getenv("K_RETRIEVE",        "4"))
 CHUNK_SIZE        = int(os.getenv("CHUNK_SIZE",        "700"))
 CHUNK_OVERLAP     = int(os.getenv("CHUNK_OVERLAP",     "100"))
+K_RETRIEVE_CANDIDATES = int(os.getenv("K_RETRIEVE_CANDIDATES",     "15"))
+K_RETRIEVE_FINAL     = int(os.getenv("K_RETRIEVE_FINAL",     "4"))
 
 # ─── CORS ─────────────────────────────────────────────────────
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
