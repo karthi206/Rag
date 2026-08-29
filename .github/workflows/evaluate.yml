@@ -32,6 +32,6 @@ jobs:
         working-directory: backend
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          MODEL_NAME: llama-3.1-8b-instant
+          MODEL_NAME: ${{ vars.MODEL_NAME }}
           EMBED_MODEL: all-MiniLM-L6-v2
         run: python evaluate.py
